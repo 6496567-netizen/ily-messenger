@@ -40,8 +40,10 @@ import androidx.webkit.WebViewAssetLoader;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -61,6 +63,8 @@ public class MainActivity extends Activity {
     private WebViewAssetLoader loader;
     private static final int REQ_FILE = 101;
     private static final String HOME = "https://appassets.androidplatform.net/assets/app/index.html";
+    private static final String Q = String.valueOf((char) 34);
+    private static final String CRLF = String.valueOf((char) 13) + String.valueOf((char) 10);
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -109,7 +113,6 @@ public class MainActivity extends Activity {
         avatar.setTextSize(15);
         avatar.setTextColor(Color.parseColor("#0B0704"));
         avatar.setGravity(Gravity.CENTER);
-        avatar.setBackground(getDrawable(R.drawable.ic_stat_ily));
         avatar.setBackgroundColor(Color.parseColor("#D4AF37"));
         LinearLayout.LayoutParams ap = new LinearLayout.LayoutParams(dp(32), dp(32));
         ap.setMargins(dp(4), dp(8), dp(8), dp(8));
@@ -182,8 +185,8 @@ public class MainActivity extends Activity {
                 case 10: web.clearCache(true); web.reload(); toast("Кэш очищен"); return true;
                 case 11: sp.edit().remove("token").remove("uid").remove("msg_id").putLong("last_notif", 0).apply();
                     js("window.ilyLogout && window.ilyLogout()"); PollService.badge(this, 0); return true;
-                case 12: new AlertDialog.Builder(this).setTitle("🌿 Клуб ILY · приложение 3.0")
-                    .setMessage("Автономное приложение клуба. Интерфейс встроен в приложение и работает без браузера и без SSL-сертификата сайта. Связь с клубом, книга контактов, звонки, уведомления и счётчик на иконке выполняются самим приложением.")
+                case 12: new AlertDialog.Builder(this).setTitle("🌿 Клуб ILY · приложение 3.1")
+                    .setMessage("Автономное приложение клуба. Интерфейс встроен в приложение и работает без браузера и без SSL-сертификата сайта. Фото и файлы загружаются напрямую приложением, уведомления и счётчик на иконке — тоже.")
                     .setPositiveButton("Понятно", null).show(); return true;
             }
             return false;
@@ -229,11 +232,13 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
-        s.setAllowFileAccess(false);
+        s.setAllowFileAccess(true);
         s.setAllowContentAccess(true);
         s.setSupportZoom(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " ILYApp/3.0");
+        // ГЛАВНОЕ ИСПРАВЛЕНИЕ: разрешаем фото и видео с сайта клуба (http)
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        s.setUserAgentString(s.getUserAgentString() + " ILYApp/3.1");
         CookieManager.getInstance().setAcceptCookie(true);
         web.addJavascriptInterface(new Bridge(), "ILY");
         web.setWebViewClient(new WebViewClient() {
@@ -353,6 +358,52 @@ public class MainActivity extends Activity {
             }).start();
         }
 
+        /* ЗАГРУЗКА ФОТО И ФАЙЛОВ: принимает base64 из страницы и шлёт на сервер клуба */
+        @JavascriptInterface public void uploadB64(final String reqId, final String name, final String mime,
+                                                   final String b64, final String chatId) {
+            new Thread(() -> {
+                String out;
+                try {
+                    String pure = b64 == null ? "" : b64;
+                    int comma = pure.indexOf(',');
+                    if (pure.indexOf("base64") >= 0 && comma >= 0) pure = pure.substring(comma + 1);
+                    byte[] data = android.util.Base64.decode(pure, android.util.Base64.DEFAULT);
+                    if (data.length > 100 * 1024 * 1024) out = Net.err("Файл больше 100 МБ");
+                    else out = postFile(name, mime, data, chatId);
+                } catch (Throwable t) { out = Net.err("Ошибка загрузки: " + t.getMessage()); }
+                final String r = out;
+                js("window.__ilyUpDone('" + reqId + "'," + r + ")");
+            }).start();
+        }
+
+        /* ПОДСТРАХОВКА ДЛЯ ФОТО: качаем картинку нативно и отдаём странице */
+        @JavascriptInterface public void img(final String reqId, final String url) {
+            new Thread(() -> {
+                String data = "";
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                    c.setConnectTimeout(10000); c.setReadTimeout(25000);
+                    c.setRequestProperty("User-Agent", "ILYApp/3.1");
+                    InputStream in = c.getInputStream();
+                    ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                    byte[] buf = new byte[8192];
+                    int n; long total = 0;
+                    while ((n = in.read(buf)) > 0) {
+                        total += n;
+                        if (total > 12L * 1024 * 1024) break;
+                        bo.write(buf, 0, n);
+                    }
+                    in.close();
+                    String mime = c.getHeaderField("Content-Type");
+                    if (mime == null || mime.indexOf("image") < 0) mime = "image/jpeg";
+                    c.disconnect();
+                    data = "data:" + mime + ";base64," + android.util.Base64.encodeToString(bo.toByteArray(), android.util.Base64.NO_WRAP);
+                } catch (Throwable ignored) {}
+                final String d = data;
+                js("window.__ilyImgDone('" + reqId + "'," + JSONObject.quote(d) + ")");
+            }).start();
+        }
+
         @JavascriptInterface public void session(String token, String uid, String name, String avatarUrl) {
             sp.edit().putString("token", token == null ? "" : token)
                     .putString("uid", uid == null ? "" : uid)
@@ -372,7 +423,7 @@ public class MainActivity extends Activity {
                 o.put("notify", notifyOn());
                 o.put("saver", saver());
                 o.put("theme", sp.getString("theme", "night"));
-                o.put("version", "3.0");
+                o.put("version", "3.1");
             } catch (Throwable ignored) {}
             return o.toString();
         }
@@ -452,15 +503,77 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface public void toast(String m) { MainActivity.this.toast(m); }
-
         @JavascriptInterface public void ring(boolean on) { PollService.ring(MainActivity.this, on); }
-
         @JavascriptInterface public void exit() { runOnUiThread(() -> finish()); }
 
         private String errJson(String m) {
             JSONObject o = new JSONObject();
             try { o.put("success", false); o.put("message", m); } catch (Throwable ignored) {}
             return o.toString();
+        }
+    }
+
+    /* multipart-загрузка файла на сервер клуба */
+    private String postFile(String name, String mime, byte[] data, String chatId) {
+        HttpURLConnection c = null;
+        try {
+            String b = "----ILYBoundary" + System.currentTimeMillis();
+            if (name == null || name.length() == 0) name = "file_" + System.currentTimeMillis();
+            if (mime == null || mime.length() == 0) mime = "application/octet-stream";
+            String tok = sp.getString("token", "");
+            String uid = sp.getString("uid", "");
+
+            StringBuilder head = new StringBuilder();
+            head.append("--").append(b).append(CRLF);
+            head.append("Content-Disposition: form-data; name=").append(Q).append("action").append(Q).append(CRLF).append(CRLF);
+            head.append("messenger_upload").append(CRLF);
+            head.append("--").append(b).append(CRLF);
+            head.append("Content-Disposition: form-data; name=").append(Q).append("token").append(Q).append(CRLF).append(CRLF);
+            head.append(tok).append(CRLF);
+            head.append("--").append(b).append(CRLF);
+            head.append("Content-Disposition: form-data; name=").append(Q).append("user_id").append(Q).append(CRLF).append(CRLF);
+            head.append(uid).append(CRLF);
+            head.append("--").append(b).append(CRLF);
+            head.append("Content-Disposition: form-data; name=").append(Q).append("chat_id").append(Q).append(CRLF).append(CRLF);
+            head.append(chatId == null ? "0" : chatId).append(CRLF);
+            head.append("--").append(b).append(CRLF);
+            head.append("Content-Disposition: form-data; name=").append(Q).append("file").append(Q)
+                .append("; filename=").append(Q).append(name.replace(Q, "")).append(Q).append(CRLF);
+            head.append("Content-Type: ").append(mime).append(CRLF).append(CRLF);
+
+            byte[] hb = head.toString().getBytes("UTF-8");
+            byte[] tb = (CRLF + "--" + b + "--" + CRLF).getBytes("UTF-8");
+            int total = hb.length + data.length + tb.length;
+
+            c = (HttpURLConnection) new URL(Net.API).openConnection();
+            c.setRequestMethod("POST");
+            c.setDoOutput(true);
+            c.setConnectTimeout(20000);
+            c.setReadTimeout(120000);
+            c.setFixedLengthStreamingMode(total);
+            c.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + b);
+            c.setRequestProperty("User-Agent", "ILYApp/3.1");
+            OutputStream os = c.getOutputStream();
+            os.write(hb);
+            os.write(data);
+            os.write(tb);
+            os.flush();
+            os.close();
+
+            InputStream in = c.getResponseCode() >= 400 ? c.getErrorStream() : c.getInputStream();
+            ByteArrayOutputStream bo = new ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            int n;
+            while (in != null && (n = in.read(buf)) > 0) bo.write(buf, 0, n);
+            if (in != null) in.close();
+            String txt = new String(bo.toByteArray(), "UTF-8").trim();
+            if (txt.length() == 0) return Net.err("Пустой ответ сервера при загрузке");
+            if (txt.charAt(0) != '{') return Net.err("Сервер вернул не JSON при загрузке");
+            return txt;
+        } catch (Throwable t) {
+            return Net.err("Загрузка не удалась: " + t.getMessage());
+        } finally {
+            if (c != null) c.disconnect();
         }
     }
 
