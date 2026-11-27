@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Клуб ILY</string>
+    <color name="ily_void">#07040F</color>
+    <color name="ily_bg">#0A0618</color>
+    <color name="ily_gold">#D4AF37</color>
+    <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/ily_bg</item>
+        <item name="android:colorPrimaryDark">@color/ily_void</item>
+        <item name="android:colorAccent">@color/ily_gold</item>
+        <item name="android:windowBackground">@color/ily_void</item>
+        <item name="android:statusBarColor">@color/ily_void</item>
+        <item name="android:navigationBarColor">@color/ily_void</item>
+        <item name="android:textColorPrimary">#F4ECDC</item>
+    </style>
+</resources>
