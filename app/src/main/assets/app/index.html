@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,interactive-widget=resizes-content">
+<title>Клуб ILY</title>
+<style>
+:root{--void:#07040f;--sf:#150d2e;--sf2:#1c1240;--gold:#d4af37;--goldl:#f6d96b;--goldd:#8b6914;
+--cream:#f4ecdc;--cs:#cdc3b4;--dim:#a9a3c2;--dim2:#7d769a;--jade:#2fbf87;--jadel:#7ff0bd;
+--heart:#ff5c8a;--red:#e5383b;--amber:#f59e0b;--lang:#4ecdc4;--royal:#7c3aed;
+--bd:rgba(212,175,55,.22);--ln:rgba(212,175,55,.16);--soft:rgba(0,0,0,.28);--field:rgba(0,0,0,.42)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--void);color:var(--cream);line-height:1.55;overflow:hidden;font-size:15px}
+body.light{--void:#f6f1e6;--sf:#fffdf7;--sf2:#f3ecdd;--gold:#8a6410;--goldl:#6e4f0c;--cream:#241a33;--cs:#3a2f4d;--dim:#4a4160;--dim2:#5c5478;--soft:rgba(0,0,0,.05);--field:#fff;--bd:rgba(138,100,16,.3);--ln:rgba(138,100,16,.2)}
+h1,h2,h3{font-family:Georgia,serif;color:var(--gold);line-height:1.2}
+button,input,select,textarea{font-family:inherit;font-size:15px}
+img,video{max-width:100%;display:block}
+.hide{display:none!important}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--goldd);border-radius:8px}
+.app{display:flex;flex-direction:column;height:100dvh}
+.tabs{display:flex;gap:4px;padding:7px 8px;border-bottom:1px solid var(--ln);background:var(--sf);flex-shrink:0}
+.tabs button{flex:1;padding:.5rem .2rem;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--dim);font-size:.78rem;font-weight:700;cursor:pointer;position:relative}
+.tabs button.on{background:linear-gradient(135deg,rgba(212,175,55,.2),rgba(124,58,237,.14));color:var(--goldl);border-color:var(--bd)}
+.tabs .n{position:absolute;top:-3px;right:2px;min-width:16px;height:16px;border-radius:8px;background:var(--heart);color:#fff;font-size:.6rem;line-height:16px;font-weight:800;padding:0 3px}
+.body{flex:1;display:flex;flex-direction:column;min-height:0}
+.pane{flex:1;overflow-y:auto;padding:10px;overscroll-behavior:contain}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:none;border-radius:10px;padding:.6rem 1rem;font-weight:700;font-size:.85rem;cursor:pointer;line-height:1.3;text-decoration:none}
+.btn:disabled{opacity:.45}
+.pri{background:linear-gradient(135deg,var(--goldl),var(--gold) 45%,var(--goldd));color:#0b0704}
+body.light .pri{color:#fff;background:linear-gradient(135deg,var(--goldd),#6e4f0c)}
+.sec{background:rgba(255,255,255,.07);border:1px solid var(--bd);color:var(--cream)}
+body.light .sec{background:rgba(0,0,0,.05)}
+.gh{background:transparent;border:1px solid var(--bd);color:var(--gold)}
+.ok{background:linear-gradient(135deg,var(--jade),#1d8a63);color:#fff}
+.dg{background:linear-gradient(135deg,#e11d48,#9f1239);color:#fff}
+.ht{background:linear-gradient(135deg,var(--heart),#c2185b);color:#fff}
+.sm{padding:.4rem .7rem;font-size:.76rem;border-radius:9px}
+.in{width:100%;background:var(--field);border:1px solid var(--bd);color:var(--cream);padding:.6rem .8rem;border-radius:10px;outline:none;margin-bottom:.5rem}
+.card{background:linear-gradient(150deg,var(--sf),var(--sf2));border:1px solid var(--bd);border-radius:14px;padding:.9rem;margin-bottom:.7rem}
+.row{display:flex;gap:.6rem;align-items:center;background:var(--soft);border:1px solid var(--ln);border-radius:12px;padding:.55rem .7rem;margin-bottom:.45rem;cursor:pointer}
+.row.on{border-color:var(--gold);background:rgba(212,175,55,.12)}
+.row.guest{border-color:rgba(255,92,138,.3)}
+.av{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--royal),var(--goldd));display:flex;align-items:center;justify-content:center;font-weight:800;color:#0b0704;overflow:hidden;flex-shrink:0}
+.av.g{background:linear-gradient(135deg,var(--heart),#9f1239);color:#fff}
+.av img{width:100%;height:100%;object-fit:cover}
+.rb{flex:1;min-width:0}
+.rn{font-weight:700;font-size:.87rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm{font-size:.75rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.un{min-width:20px;height:20px;border-radius:10px;background:var(--heart);color:#fff;font-size:.66rem;font-weight:800;line-height:20px;text-align:center;padding:0 5px}
+.empty{text-align:center;padding:2rem 1rem;color:var(--dim2)}
+.empty .i{font-size:2.6rem;display:block;margin-bottom:.5rem;opacity:.6}
+.empty h3{font-size:1.05rem;margin-bottom:.3rem}
+.empty p{font-size:.82rem;margin-bottom:.8rem}
+.acts{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem}
+.note{display:flex;gap:.5rem;background:rgba(212,175,55,.08);border-left:3px solid var(--gold);border-radius:0 10px 10px 0;padding:.6rem .8rem;font-size:.8rem;color:var(--dim);margin-bottom:.6rem}
+.note.bad{background:rgba(229,56,59,.09);border-left-color:var(--red)}
+.note.ok{background:rgba(47,191,135,.09);border-left-color:var(--jade)}
+.note b{color:var(--goldl)}
+.chat{flex:1;display:flex;flex-direction:column;min-height:0}
+.chead{display:flex;gap:.5rem;align-items:center;padding:.5rem .7rem;border-bottom:1px solid var(--ln);background:var(--sf);flex-shrink:0}
+.chead .t{flex:1;min-width:0;font-family:Georgia,serif;color:var(--gold);font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msgs{flex:1;overflow-y:auto;padding:.7rem;display:flex;flex-direction:column;gap:.4rem}
+.msg{max-width:82%;padding:.45rem .7rem;border-radius:12px;background:var(--soft);border:1px solid var(--ln);font-size:.88rem;word-wrap:break-word;position:relative}
+.msg.mine{align-self:flex-end;background:linear-gradient(135deg,rgba(47,191,135,.22),rgba(29,138,99,.16));border-color:rgba(47,191,135,.3)}
+.msg .w{font-size:.67rem;color:var(--gold);font-weight:700}
+.msg .t{font-size:.6rem;color:var(--dim2);text-align:right;margin-top:.1rem}
+.msg img,.msg video{border-radius:9px;margin-top:.3rem;max-height:300px}
+.msg audio{width:100%;margin-top:.3rem}
+.msg a{color:var(--gold);font-size:.8rem}
+.msg .rx{display:flex;gap:3px;flex-wrap:wrap;margin-top:.25rem}
+.msg .rx span{font-size:.7rem;background:rgba(255,255,255,.09);border:1px solid var(--ln);border-radius:9px;padding:0 .35rem;cursor:pointer}
+.foot{display:flex;gap:.35rem;padding:.5rem .6rem calc(.5rem + env(safe-area-inset-bottom));border-top:1px solid var(--ln);background:var(--sf);align-items:flex-end;flex-shrink:0}
+.foot textarea{flex:1;background:var(--field);border:1px solid var(--bd);border-radius:15px;color:var(--cream);padding:.5rem .8rem;min-height:40px;max-height:100px;resize:none;outline:none}
+.ib{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid var(--bd);color:var(--gold);cursor:pointer;font-size:.95rem;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.post{background:linear-gradient(150deg,var(--sf),var(--sf2));border:1px solid var(--bd);border-radius:14px;padding:.85rem;margin-bottom:.7rem}
+.ph{display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem}
+.pn{font-weight:700;color:var(--goldl);font-size:.85rem}
+.pm{font-size:.66rem;color:var(--dim2)}
+.pt{font-family:Georgia,serif;color:var(--gold);font-size:1rem;margin-bottom:.25rem}
+.px{font-size:.89rem;white-space:pre-wrap;word-wrap:break-word}
+.pa{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.5rem;padding-top:.45rem;border-top:1px solid var(--ln);align-items:center}
+.pact{background:none;border:none;color:var(--dim);cursor:pointer;font-size:.78rem;padding:.25rem .45rem;border-radius:8px}
+.pact.mine{color:var(--goldl);background:rgba(212,175,55,.15);border:1px solid var(--bd)}
+.rxbar{display:flex;gap:3px;flex-wrap:wrap;margin-top:.4rem}
+.chip{font-size:.72rem;background:rgba(255,255,255,.07);border:1px solid var(--ln);border-radius:10px;padding:.05rem .4rem;cursor:pointer;color:var(--cs)}
+.chip.on{border-color:var(--gold);background:rgba(212,175,55,.16);color:var(--goldl)}
+.cmts{margin-top:.5rem;border-top:1px dashed var(--ln);padding-top:.5rem}
+.cmt{display:flex;gap:.45rem;margin-bottom:.45rem}
+.cmt .cb{flex:1;min-width:0}
+.bub{background:rgba(255,255,255,.05);border:1px solid var(--ln);border-radius:11px;padding:.35rem .6rem}
+body.light .bub{background:rgba(0,0,0,.04)}
+.cn{font-size:.74rem;color:var(--goldl);font-weight:700}
+.ct{font-size:.84rem;white-space:pre-wrap;word-wrap:break-word}
+.cf{display:flex;gap:.3rem;align-items:center;margin-top:.15rem;flex-wrap:wrap}
+.cf button{background:none;border:none;color:var(--dim2);cursor:pointer;font-size:.69rem;padding:.1rem .3rem}
+.kids{margin-top:.35rem;padding-left:.5rem;border-left:2px solid var(--ln)}
+.cform{display:flex;gap:.3rem;align-items:flex-end;margin-top:.35rem}
+.cform textarea{flex:1;background:var(--field);border:1px solid var(--bd);border-radius:11px;color:var(--cream);padding:.4rem .65rem;min-height:36px;max-height:80px;resize:none;outline:none;font-size:.83rem}
+.rep{font-size:.71rem;color:var(--jadel);margin:.25rem 0}
+.rep button{background:none;border:none;color:var(--heart);cursor:pointer;font-size:.71rem}
+.ov{position:fixed;inset:0;z-index:60;background:rgba(6,3,14,.92);display:none;align-items:flex-start;justify-content:center;padding:14px;overflow-y:auto}
+.ov.on{display:flex}
+.modal{background:linear-gradient(155deg,var(--sf),var(--sf2));border:1px solid var(--gold);border-radius:16px;max-width:520px;width:100%;margin:auto;padding:1.1rem;position:relative}
+.modal h2{font-size:1.15rem;margin-bottom:.6rem;padding-right:34px}
+.mx{position:absolute;top:9px;right:9px;width:29px;height:29px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid var(--bd);color:var(--cream);cursor:pointer}
+.pal{position:fixed;z-index:70;display:none;background:#120726;border:1px solid var(--gold);border-radius:13px;padding:5px}
+body.light .pal{background:#fff}
+.pal.on{display:block}
+.pal .g{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+.pal .g button{border:none;background:transparent;font-size:1.3rem;padding:3px 4px;border-radius:8px;cursor:pointer}
+.ep{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;background:#120726;border-top:1px solid var(--gold);border-radius:14px 14px 0 0;max-height:46vh;overflow-y:auto;padding:8px}
+body.light .ep{background:#fff}
+.ep.on{display:block}
+.ep .g{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+.ep .g button{border:none;background:transparent;font-size:1.25rem;padding:5px 0;cursor:pointer}
+.call{position:fixed;inset:0;z-index:80;background:rgba(4,2,10,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px}
+.call.on{display:flex}
+.cav{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,var(--royal),var(--goldd));display:flex;align-items:center;justify-content:center;font-size:2.2rem;color:#0b0704;font-weight:800}
+.cnm{font-family:Georgia,serif;font-size:1.3rem;color:var(--goldl)}
+.cst{color:var(--dim);font-size:.86rem}
+.cb{display:flex;gap:14px;margin-top:6px}
+.cbtn{width:56px;height:56px;border-radius:50%;border:none;font-size:1.3rem;color:#fff;cursor:pointer}
+.cbtn.a{background:var(--jade)}.cbtn.e{background:var(--red)}.cbtn.m{background:rgba(255,255,255,.15)}
+#rv{width:min(100%,400px);border-radius:13px;background:#000;aspect-ratio:4/3;object-fit:cover;display:none}
+#lv{width:104px;border-radius:11px;background:#000;position:absolute;right:14px;bottom:104px;border:1px solid var(--bd);display:none}
+.toasts{position:fixed;left:12px;right:12px;top:10px;z-index:90;display:flex;flex-direction:column;gap:6px}
+.toast{padding:.6rem .85rem;border-radius:10px;color:#fff;font-size:.81rem;background:linear-gradient(135deg,#155e75,#0e7490);border-left:4px solid #4cc9f0}
+.toast.ok{background:linear-gradient(135deg,#065f46,#047857);border-left-color:var(--jadel)}
+.toast.err{background:linear-gradient(135deg,#881337,#9f1239);border-left-color:#ff9a9c}
+.toast.warn{background:linear-gradient(135deg,#78350f,#92400e);border-left-color:#fbbf24}
+.gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:radial-gradient(ellipse 70% 50% at 20% 0%,rgba(124,58,237,.3),transparent 60%),var(--void);overflow-y:auto}
+.gc{width:min(420px,100%);background:linear-gradient(155deg,var(--sf),var(--sf2));border:1px solid var(--gold);border-radius:18px;padding:1.5rem;text-align:center}
+.orb{width:76px;height:76px;margin:0 auto .9rem;border-radius:50%;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.3),var(--gold) 45%,#0a0714);display:flex;align-items:center;justify-content:center;font-size:2rem}
+.spin{width:18px;height:18px;border:2px solid var(--bd);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.load{display:flex;gap:.5rem;align-items:center;justify-content:center;padding:1.4rem;color:var(--dim);font-size:.85rem}
+.off{position:fixed;left:0;right:0;top:0;z-index:75;background:linear-gradient(135deg,#78350f,#92400e);color:#fff;font-size:.75rem;text-align:center;padding:.3rem;display:none}
+.off.on{display:block}
+</style>
+</head>
+<body>
+<div class="off" id="off">📴 Нет сети — сообщения уйдут при возвращении связи</div>
+
+<div class="gate" id="gate">
+<div class="gc">
+<div class="orb">🌿</div>
+<h1 style="font-size:1.4rem;margin-bottom:.3rem">Клуб ILY</h1>
+<div style="color:var(--dim2);font-size:.7rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:1rem">Автономное приложение</div>
+<div id="invB" class="note ok hide"></div>
+<input class="in" id="lg" placeholder="Телефон, email или логин клуба" autocomplete="username">
+<input class="in" id="pw" type="password" placeholder="Пароль клуба" autocomplete="current-password">
+<button class="btn pri" style="width:100%" id="lgb" onclick="doLogin()">🔓 Войти</button>
+<div style="font-size:.76rem;color:var(--dim);margin-top:.8rem">Один аккаунт на весь клуб. Приложение работает без браузера и без сертификата сайта.</div>
+</div>
+</div>
+
+<div class="app hide" id="app">
+<div class="tabs">
+<button id="tChats" class="on" onclick="tab('chats')">💬 Чаты<span class="n hide" id="nCh">0</span></button>
+<button id="tContacts" onclick="tab('contacts')">📱 Книга</button>
+<button id="tFeed" onclick="tab('feed')">📰 Лента</button>
+<button id="tSpaces" onclick="tab('spaces')">🎓 Уроки</button>
+</div>
+<div class="body" id="body">
+<div class="pane" id="pane"></div>
+<div class="chat hide" id="chat">
+<div class="chead">
+<button class="ib" onclick="closeChat()">‹</button>
+<div class="av" id="cAv">💬</div>
+<div class="t" id="cT">Чат</div>
+<button class="ib" id="cA" onclick="callStart('audio')">📞</button>
+<button class="ib" id="cV" onclick="callStart('video')">📹</button>
+</div>
+<div class="msgs" id="msgs"></div>
+<div class="foot">
+<button class="ib" onclick="document.getElementById('file').click()">📎</button>
+<input type="file" id="file" class="hide" multiple onchange="upload(this.files)">
+<button class="ib" onclick="emojiOpen('inp')">😊</button>
+<textarea id="inp" rows="1" placeholder="Сообщение…" oninput="grow(this)" onkeydown="keySend(event)"></textarea>
+<button class="btn pri sm" onclick="send()">➤</button>
+</div>
+</div>
+</div>
+</div>
+
+<div class="ov" id="ov"><div class="modal"><button class="mx" onclick="ovClose()">✕</button><div id="ovB"></div></div></div>
+<div class="pal" id="pal"><div class="g" id="palG"></div></div>
+<div class="ep" id="ep"><div class="g" id="epG"></div></div>
+
+<div class="call" id="call">
+<div class="cav" id="callAv">📞</div>
+<div class="cnm" id="callNm">—</div>
+<div class="cst" id="callSt">Соединение…</div>
+<video id="rv" autoplay playsinline></video>
+<audio id="ra" autoplay></audio>
+<video id="lv" autoplay muted playsinline></video>
+<div class="cb" id="callB"></div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<script src="app.js"></script>
+</body>
+</html>
