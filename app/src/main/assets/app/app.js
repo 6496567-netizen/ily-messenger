@@ -1,4 +1,10 @@
 'use strict';
+/* ============================================================
+app.js · КЛУБ ILY · автономное приложение v3.1
+ИСПРАВЛЕНО: фото в ленте грузятся (нативная подстраховка),
+добавлена загрузка фото и файлов в ленту и в чат.
+БЕЗОПАСНОСТЬ ПЕРЕНОСА: обратных слэшей нет.
+============================================================ */
 var NL = String.fromCharCode(10), SQ = String.fromCharCode(39);
 var NLRE = new RegExp('[' + String.fromCharCode(13) + NL + ']+', 'g');
 function $(i){return document.getElementById(i);}
@@ -12,8 +18,10 @@ function toast(m,k){var n=document.createElement('div');n.className='toast '+(k|
 function grow(e){e.style.height='auto';e.style.height=Math.min(100,e.scrollHeight)+'px';}
 
 /* ---------- МОСТ ---------- */
-var CB={},CN=0,HAS=false;
+var CB={},CN=0,UCB={},UN=0,ICB={},IN=0,HAS=false;
 window.__ilyResolve=function(id,d){var f=CB[id];delete CB[id];if(f)f(d);};
+window.__ilyUpDone=function(id,d){var f=UCB[id];delete UCB[id];if(f)f(d);};
+window.__ilyImgDone=function(id,d){var f=ICB[id];delete ICB[id];if(f)f(d);};
 function api(a,p){
 return new Promise(function(res){
 if(!HAS){res({success:false,message:'Мост приложения недоступен'});return;}
@@ -25,11 +33,48 @@ try{ILY.call(id,a,JSON.stringify(p||{}));}catch(e){done=true;res({success:false,
 }
 function nat(){return window.ILY||null;}
 function nstate(){try{return JSON.parse(ILY.state());}catch(e){return {};}}
+/* загрузка файла: читаем в base64 и отдаём нативному загрузчику */
+function natUpload(file,chatId){
+return new Promise(function(res){
+if(!HAS){res({success:false,message:'Мост недоступен'});return;}
+if(file.size>100*1024*1024){res({success:false,message:'Файл больше 100 МБ'});return;}
+var rd=new FileReader();
+rd.onload=function(){
+var id='u'+(++UN),done=false;
+UCB[id]=function(d){if(done)return;done=true;res(d||{success:false,message:'Пустой ответ'});};
+setTimeout(function(){if(done)return;done=true;delete UCB[id];res({success:false,message:'Загрузка шла слишком долго'});},180000);
+try{ILY.uploadB64(id,file.name||'file',file.type||'application/octet-stream',String(rd.result),String(chatId||0));}
+catch(e){done=true;res({success:false,message:'Ошибка моста загрузки'});}
+};
+rd.onerror=function(){res({success:false,message:'Не удалось прочитать файл'});};
+rd.readAsDataURL(file);
+});
+}
+/* подстраховка для фото: тянем картинку через приложение */
+function natImg(url){
+return new Promise(function(res){
+if(!HAS){res('');return;}
+var id='i'+(++IN),done=false;
+ICB[id]=function(d){if(done)return;done=true;res(d||'');};
+setTimeout(function(){if(done)return;done=true;delete ICB[id];res('');},30000);
+try{ILY.img(id,url);}catch(e){done=true;res('');}
+});
+}
+function fixImg(el,url){
+if(el.getAttribute('data-fixed')==='1')return;
+el.setAttribute('data-fixed','1');
+natImg(url).then(function(d){if(d)el.src=d;});
+}
+function imgTag(url,style){
+var u=esc(url);
+return '<img src="'+u+'" loading="lazy" style="'+(style||'border-radius:10px;margin-top:.4rem;max-width:100%')+'" onerror="fixImg(this,'+SQ+u+SQ+')">';
+}
 
 /* ---------- СОСТОЯНИЕ ---------- */
-var me=null,uid='',token='',tabCur='chats',cur=null,last=0,pollT=null,listT=null;
-var dialogs=[],feed=[],contacts={members:[],guests:[]},spaces=[],invites=[];
-var cmt={},reply={},rx={},queue=[];
+var me=null,uid='',token='',tabCur='chats';
+var dialogs=[],feed=[],contacts={members:[],guests:[]},spaces=[];
+var cur=null,last=0,pollT=null,listT=null;
+var cmt={},reply={},rx={},queue=[],feedMedia=[],feedBusy=false;
 var RX=[['like','👍','Нравится'],['love','❤️','Супер'],['haha','😆','Ха-ха'],['wow','😮','Ух ты'],['sad','😢','Сочувствую'],['fire','🔥','Огонь'],['clap','👏','Браво'],['pray','🙏','Благодарю']];
 var EMO='😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 🤩 😘 😋 😜 🤗 🤔 😐 😏 🙄 😌 😔 😴 😷 🥳 😎 🤓 😮 😲 😳 🥺 😢 😭 😱 😞 😩 😤 😡 🤬 💀 🤡 👻 🤖 👍 👎 👌 ✌️ 🤞 🤘 🤙 👈 👉 👆 👇 ✋ 👋 🤝 🙏 💪 👏 🙌 👐 👊 ✊ ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 💕 💞 💓 💗 💖 💘 💝 💋 🌹 🌺 🌸 💐 💌 💍 💯 💥 💫 🌿 🌱 🌳 🌴 🍀 🍁 🌼 🌻 🌙 🌕 ⭐ 🌟 ✨ 🔥 ☀️ 🌊 🕊️ 🦋 🐍 🦁 🐘 🦅 🐢 🌋 🏝 🌅 🌌 🔮 🕯️ 🗝️ ⚖️ ♟️ 👑 🛡️ 🏺 📿 🧿 🪶 🥁 🪘 🎭 🎨 🎵 🎶 🎉 🎊 🎁 🏆 🥇 ✅ ❌ ❓ ❗ 💎 🪙 💰 📜 🧭 🚪 🏠 ☕ 🍷 🥂 🍯 🍚 🌶️ 🥥 🍇 🍎 🐚 🪄 🧘 💃 🕺'.split(' ');
 try{queue=JSON.parse(localStorage.getItem('ily_q')||'[]');}catch(e){queue=[];}
@@ -39,7 +84,7 @@ window.ilyNativeReady=function(){
 HAS=!!nat();
 var st=nstate();
 if(st.theme==='light')document.body.classList.add('light');
-buildPal();buildEp();
+buildPal();buildEp();injectStyles();
 var inv=new URLSearchParams(location.search).get('i')||localStorage.getItem('ily_inv')||'';
 if(inv)localStorage.setItem('ily_inv',inv);
 token=st.token||localStorage.getItem('ily_token')||'';
@@ -67,6 +112,19 @@ if(h==='feed'){tab('feed');return;}
 if(h==='contacts'){tab('contacts');return;}
 tab('chats');
 };
+function injectStyles(){
+if($('ilyExtraCss'))return;
+var s=document.createElement('style');s.id='ilyExtraCss';
+s.textContent='.fthumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:.5rem}'+
+'.fth{position:relative;background:rgba(0,0,0,.35);border:1px solid var(--ln);border-radius:9px;padding:3px}'+
+'.fth .im{width:100%;height:60px;border-radius:6px;background:#000;display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden}'+
+'.fth .im img{width:100%;height:100%;object-fit:cover}'+
+'.fth .nm{font-size:.6rem;color:var(--dim2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+'.fth .x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;border:none;font-size:.7rem;cursor:pointer}'+
+'.fbar{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.5rem}'+
+'.fnote{font-size:.72rem;color:var(--dim2);margin-top:.35rem}';
+document.head.appendChild(s);
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){if(!HAS&&window.ilyNativeReady)window.ilyNativeReady();},1200);});
 else setTimeout(function(){if(!HAS&&window.ilyNativeReady)window.ilyNativeReady();},1200);
 
@@ -86,9 +144,16 @@ boot();
 }
 async function boot(){
 var c=await api('messenger_config',{});
-if(c.success&&c.data&&c.data.me){me=c.data.me;uid=String(me.club_id||uid);}
+if(!c.success||!c.data||!c.data.me){
+token='';localStorage.removeItem('ily_token');
+try{ILY.session('','','','');}catch(e){}
+$('app').classList.add('hide');$('gate').classList.remove('hide');
+toast('🔓 Войдите заново — ключ входа истёк','warn',6000);
+return;
+}
+me=c.data.me;uid=String(me.club_id||uid);
 $('gate').classList.add('hide');$('app').classList.remove('hide');
-try{ILY.session(token,uid,(me&&me.name)||'',(me&&me.avatar)||'');}catch(e){}
+try{ILY.session(token,uid,me.name||'',me.avatar||'');}catch(e){}
 tab('chats');
 clearInterval(listT);
 listT=setInterval(function(){if(document.hidden)return;badges();if(tabCur==='chats'&&!cur)loadDialogs(true);},15000);
@@ -126,7 +191,7 @@ if(!r.success){pane('<div class="note bad"><span>⚠️</span><div>'+esc(r.messa
 dialogs=r.data||[];
 if(!dialogs.length){pane('<div class="empty"><span class="i">💬</span><h3>Чатов пока нет</h3><p>Откройте телефонную книгу и напишите тому, кто уже в клубе.</p><button class="btn pri sm" onclick="tab('+SQ+'contacts'+SQ+')">📱 Книга контактов</button></div>');return;}
 pane(dialogs.map(function(d){
-var av=d.avatar?'<img src="'+esc(d.avatar)+'" alt="">':esc((d.title||'?').charAt(0));
+var av=d.avatar?'<img src="'+esc(d.avatar)+'" alt="" onerror="fixImg(this,'+SQ+esc(d.avatar)+SQ+')">':esc((d.title||'?').charAt(0));
 return '<div class="row" onclick="openById('+Number(d.id)+')"><div class="av">'+av+'</div>'+
 '<div class="rb"><div class="rn">'+esc(d.title)+'</div><div class="rm">'+esc(cut(d.last_text||'Нет сообщений',54))+'</div></div>'+
 '<div style="text-align:right"><div class="rm">'+tm(d.last_time)+'</div>'+(Number(d.unread)>0?'<span class="un">'+Number(d.unread)+'</span>':'')+'</div></div>';
@@ -163,23 +228,23 @@ rows.forEach(function(m){last=Math.max(last,Number(m.id));box.appendChild(msgNod
 if(full||bottom)box.scrollTop=box.scrollHeight;
 if(last)api('messenger_read',{chat_id:Number(cur.id),last_id:last});
 }
+function mediaHtml(a){
+var u=esc(a.url||a.src||''),s=String(a.url||a.src||''),t=String(a.type||'');
+if(t==='image'||/[.](jpg|jpeg|png|gif|webp|bmp)$/i.test(s))return imgTag(a.url||a.src);
+if(t==='video'||/[.](mp4|webm|mov|m4v)$/i.test(s))return '<video src="'+u+'" controls playsinline style="max-width:100%;border-radius:10px;margin-top:.4rem"></video>';
+if(t==='audio'||/[.](mp3|wav|ogg|m4a|aac)$/i.test(s))return '<audio src="'+u+'" controls style="width:100%;margin-top:.4rem"></audio>';
+return '<a href="'+u+'" onclick="nat().open('+SQ+u+SQ+');return false">📎 '+esc(a.name||'Файл')+'</a>';
+}
 function msgNode(m){
 var e=document.createElement('div');
 e.className='msg'+(m.mine?' mine':'');
-var md='';
-(m.media||[]).forEach(function(a){
-var u=esc(a.url||a.src||''),s=String(a.url||a.src||''),t=String(a.type||'');
-if(t==='image'||/[.](jpg|jpeg|png|gif|webp)$/i.test(s))md+='<img src="'+u+'" loading="lazy">';
-else if(t==='video'||/[.](mp4|webm|mov)$/i.test(s))md+='<video src="'+u+'" controls playsinline></video>';
-else if(t==='audio'||/[.](mp3|wav|ogg|m4a)$/i.test(s))md+='<audio src="'+u+'" controls></audio>';
-else md+='<a href="'+u+'" onclick="nat().open('+SQ+u+SQ+');return false">📎 '+esc(a.name||'Файл')+'</a>';
-});
+var md=(m.media||[]).map(mediaHtml).join('');
 var rxh='';
 if((m.reactions||[]).length)rxh='<div class="rx">'+m.reactions.map(function(x){return '<span onclick="msgReact('+Number(m.id)+','+SQ+x.emoji+SQ+')">'+x.emoji+' '+Number(x.n)+'</span>';}).join('')+'</div>';
 e.innerHTML=(m.mine?'':'<div class="w">'+esc(m.sender_name||'Участник')+'</div>')+br(m.text||'')+md+rxh+
 '<div class="t">'+tm(m.created_at)+'</div>'+
 '<div class="acts" style="margin-top:.25rem"><button class="pact" onclick="msgReact('+Number(m.id)+','+SQ+'❤️'+SQ+')">❤️</button>'+
-'<button class="pact" onclick="shareMsg('+Number(m.id)+')">📤 Поделиться</button></div>';
+'<button class="pact" onclick="shareMsg()">📤 Поделиться</button></div>';
 return e;
 }
 function keySend(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
@@ -199,23 +264,60 @@ for(var i=0;i<queue.length;i++){var q=queue[i];var r=await api('messenger_send',
 var n=queue.length-left.length;queue=left;localStorage.setItem('ily_q',JSON.stringify(queue));
 if(n>0)toast('📤 Отправлено из очереди: '+n,'ok');
 }
-async function upload(files){
-if(!cur||!files||!files.length)return;
-toast('📤 Загрузка файлов доступна в разделе сайта через кнопку «Поделиться»','warn');
-$('file').value='';
+/* ЗАГРУЗКА ФОТО И ФАЙЛОВ В ЧАТ */
+function upload(files){attachChat(files);}
+function attachChat(files){
+if(!cur){toast('Сначала откройте чат','warn');return;}
+if(files&&files.length){sendFiles(cur.id,files,'chat');return;}
+pickFiles(function(fl){sendFiles(cur.id,fl,'chat');});
+}
+async function sendFiles(chatId,files,where){
+var ok=0;
+for(var i=0;i<files.length;i++){
+var f=files[i];
+toast('📤 Загружаем '+cut(f.name||'файл',26)+'…');
+var r=await natUpload(f,chatId);
+if(!r.success){toast('❌ '+(r.message||'Не загружено'),'err');continue;}
+var item=r.data||{};
+if(!item.url){toast('❌ Сервер не вернул ссылку','err');continue;}
+if(!item.type)item.type=guessType(item.url||item.name||'');
+if(where==='chat'){
+var s=await api('messenger_send',{chat_id:Number(chatId),text:'',media:[item]});
+if(s.success)ok++;else toast('❌ '+s.message,'err');
+}
+}
+if(where==='chat'){if($('file'))$('file').value='';loadMsgs(false);loadDialogs(true);}
+if(ok>0)toast('✅ Загружено файлов: '+ok,'ok');
+}
+function guessType(s){
+s=String(s||'');
+if(/[.](jpg|jpeg|png|gif|webp|bmp)$/i.test(s))return 'image';
+if(/[.](mp4|webm|mov|m4v)$/i.test(s))return 'video';
+if(/[.](mp3|wav|ogg|m4a|aac)$/i.test(s))return 'audio';
+return 'file';
+}
+function pickFiles(cb,accept){
+var inp=document.createElement('input');
+inp.type='file';inp.multiple=true;
+if(accept)inp.accept=accept;
+inp.style.display='none';
+document.body.appendChild(inp);
+inp.onchange=function(){
+var fl=inp.files?Array.prototype.slice.call(inp.files):[];
+inp.remove();
+if(fl.length)cb(fl);
+};
+inp.click();
 }
 async function msgReact(id,e){
 var r=await api('messenger_react',{message_id:id,emoji:e});
 if(r.success)loadMsgs(true);else toast('❌ '+r.message,'err');
 }
-function shareMsg(id){
-var t='';var box=$('msgs');
-var m=box.querySelectorAll('.msg');
-t=(cur&&cur.title?cur.title:'Клуб ILY');
-nat().share('Клуб ILY','Сообщение из клуба «'+t+'»','http://ily-magic.ru/messenger/');
+function shareMsg(){
+nat().share('Клуб ILY','Сообщение из клуба «'+((cur&&cur.title)||'Клуб ILY')+'»','http://ily-magic.ru/messenger/');
 }
 
-/* ---------- ЛЕНТА + КОММЕНТАРИИ + РЕАКЦИИ ---------- */
+/* ---------- ЛЕНТА ---------- */
 async function loadFeed(){
 loading('Загружаем ленту…');
 var r=await api('mapp_feed',{limit:40});
@@ -225,13 +327,45 @@ feed=r.data||[];
 var ids=[];feed.forEach(function(p){var id=pid(p);if(id)ids.push({t:'post',id:id});});
 if(ids.length){var s=await api('mapp_reactions',{targets:ids});if(s.success&&s.data&&s.data.map)Object.keys(s.data.map).forEach(function(k){rx[k]=s.data.map[k];});}
 var h='<div class="card"><textarea class="in" id="fp" placeholder="Что происходит в вашем круге?" style="min-height:64px"></textarea>'+
-'<div class="acts"><button class="btn pri sm" onclick="publish()">📤 Опубликовать</button>'+
+'<div id="fpThumbs"></div>'+
+'<div class="fbar">'+
+'<button class="btn pri sm" id="fpSend" onclick="publish()">📤 Опубликовать</button>'+
+'<button class="btn sec sm" onclick="attachFeed()">📎 Фото / файл</button>'+
 '<button class="btn sec sm" onclick="emojiOpen('+SQ+'fp'+SQ+')">😊 Смайлики</button>'+
-'<button class="btn gh sm" onclick="loadFeed()">↻ Обновить</button></div></div>';
+'<button class="btn gh sm" onclick="loadFeed()">↻ Обновить</button>'+
+'</div><div class="fnote">Фото, видео, аудио и любые файлы до 100 МБ. Загрузка идёт напрямую приложением.</div></div>';
 h+=feed.length?feed.map(postHtml).join(''):'<div class="empty"><span class="i">📰</span><h3>Лента пуста</h3><p>Опубликуйте первый пост.</p></div>';
 pane(h);
+renderFeedThumbs();
 Object.keys(cmt).forEach(function(k){if(cmt[k]&&cmt[k].open)renderCmt(Number(k));});
 }
+function attachFeed(){pickFiles(function(fl){addFeedFiles(fl);});}
+async function addFeedFiles(files){
+for(var i=0;i<files.length;i++){
+if(feedMedia.length>=10){toast('Максимум 10 материалов в посте','warn');break;}
+var f=files[i];
+toast('📤 Загружаем '+cut(f.name||'файл',26)+'…');
+var r=await natUpload(f,0);
+if(!r.success){toast('❌ '+(r.message||'Не загружено'),'err');continue;}
+var item=r.data||{};
+if(!item.url){toast('❌ Сервер не вернул ссылку','err');continue;}
+if(!item.type)item.type=guessType(item.url||item.name||'');
+feedMedia.push(item);
+renderFeedThumbs();
+}
+if(feedMedia.length)toast('✅ Прикреплено: '+feedMedia.length,'ok');
+}
+function renderFeedThumbs(){
+var box=$('fpThumbs');if(!box)return;
+if(!feedMedia.length){box.innerHTML='';return;}
+box.innerHTML='<div class="fthumbs">'+feedMedia.map(function(m,i){
+var t=String(m.type||''),u=String(m.url||'');
+var inner=t==='image'?'<img src="'+esc(u)+'" onerror="fixImg(this,'+SQ+esc(u)+SQ+')">':(t==='video'?'🎬':(t==='audio'?'🎧':'📎'));
+return '<div class="fth"><button class="x" onclick="delFeedMedia('+i+')">×</button><div class="im">'+inner+'</div>'+
+'<div class="nm">'+esc(cut(m.name||t,14))+'</div></div>';
+}).join('')+'</div>';
+}
+function delFeedMedia(i){feedMedia.splice(i,1);renderFeedThumbs();}
 function pid(p){var s=String(p&&p.id!=null?p.id:p);var d=s.replace(/[^0-9]/g,'');return Number(d)||0;}
 function rxSum(t,id){return rx[t+':'+Number(id)]||{counts:{},total:0,my:null};}
 function rxByKey(k){for(var i=0;i<RX.length;i++)if(RX[i][0]===k)return RX[i];return RX[0];}
@@ -249,12 +383,7 @@ return '<button class="pact'+(m?' mine':'')+'" id="rbn-'+t+'-'+Number(id)+'" onc
 }
 function postHtml(p){
 var id=pid(p),dec=p.type==='decree';
-var md=(p.media||[]).map(function(a){
-var u=esc(a.url||a.src||''),s=String(a.url||a.src||''),t=String(a.type||'');
-if(t==='image'||/[.](jpg|jpeg|png|gif|webp)$/i.test(s))return '<img src="'+u+'" style="border-radius:10px;margin-top:.4rem" loading="lazy">';
-if(t==='video'||/[.](mp4|webm|mov)$/i.test(s))return '<video src="'+u+'" controls playsinline style="border-radius:10px;margin-top:.4rem"></video>';
-return '';
-}).join('');
+var md=(p.media||[]).map(mediaHtml).join('');
 return '<div class="post"><div class="ph"><div class="av" style="width:34px;height:34px;font-size:.8rem">'+esc((p.author_name||'?').charAt(0))+'</div>'+
 '<div><div class="pn">'+esc(p.author_name||'Клуб')+(dec?' 📜':'')+'</div><div class="pm">'+tm(p.created_at)+'</div></div></div>'+
 (p.title?'<div class="pt">'+esc(p.title)+'</div>':'')+
@@ -265,15 +394,18 @@ return '<div class="post"><div class="ph"><div class="av" style="width:34px;heig
 '<div class="cmts hide" id="cm-'+id+'"></div></div>';
 }
 async function publish(){
-var t=$('fp').value.trim();if(!t){toast('Напишите текст','warn');return;}
-var r=await api('messenger_feed_post',{text:t,type:'post'});
-toast(r.success?'📰 Опубликовано':'❌ '+r.message,r.success?'ok':'err');
-if(r.success)loadFeed();
+if(feedBusy)return;
+var t=$('fp').value.trim();
+if(!t&&!feedMedia.length){toast('Напишите текст или прикрепите файл','warn');return;}
+feedBusy=true;var b=$('fpSend');if(b){b.disabled=true;b.textContent='⏳ Публикуем…';}
+var r=await api('messenger_feed_post',{text:t,type:'post',media:feedMedia});
+feedBusy=false;if(b){b.disabled=false;b.textContent='📤 Опубликовать';}
+if(!r.success){toast('❌ '+r.message,'err');return;}
+feedMedia=[];toast('📰 Опубликовано','ok');loadFeed();
 }
 function sharePost(id){
 var p=feed.find(function(x){return pid(x)===Number(id);});
-var txt=p?cut(p.text||p.title||'',220):'Клуб ILY';
-nat().share('Клуб ILY',txt,'http://ily-magic.ru/messenger/');
+nat().share('Клуб ILY',p?cut(p.text||p.title||'',220):'Клуб ILY','http://ily-magic.ru/messenger/');
 }
 async function setRx(t,id,k){
 id=Number(id);
@@ -284,7 +416,7 @@ s.counts=c;s.total=Object.keys(c).reduce(function(a,x){return a+Number(c[x]);},0
 rx[t+':'+id]=s;repaintRx(t,id);
 var r=await api('mapp_react',{target_type:t,target_id:id,reaction:k});
 if(r.success&&r.data&&r.data.summary){rx[t+':'+id]=r.data.summary;repaintRx(t,id);}
-else if(!r.success){toast('❌ '+r.message,'err');}
+else if(!r.success)toast('❌ '+r.message,'err');
 }
 function repaintRx(t,id){
 var bar=$('rb-'+t+'-'+Number(id));
@@ -312,7 +444,6 @@ return '<div class="row" style="cursor:default"><div class="av">'+esc((u.name||'
 }
 ovOpen(h);
 }
-/* --- КОММЕНТАРИИ: список, ответы, удаление --- */
 async function toggleCmt(id,focus){
 id=Number(id);
 var box=$('cm-'+id);if(!box)return;
@@ -322,11 +453,7 @@ st.open=true;cmt[id]=st;box.classList.remove('hide');
 if(!st.loaded){
 box.innerHTML='<div class="load"><span class="spin"></span> Комментарии…</div>';
 var r=await api('mapp_comments',{post_id:id,limit:300});
-if(!r.success){
-box.innerHTML='<div class="note bad"><span>⚠️</span><div><b>Комментарии недоступны.</b> '+esc(r.message)+
-'<br>Администратору: положите <b>api-messenger-app.php</b> в корень сайта.</div></div>';
-return;
-}
+if(!r.success){box.innerHTML='<div class="note bad"><span>⚠️</span><div>'+esc(r.message)+'</div></div>';return;}
 st.items=(r.data&&r.data.items)||[];st.loaded=true;
 var ids=st.items.map(function(c){return {t:'comment',id:Number(c.id)};});
 if(ids.length){var s=await api('mapp_reactions',{targets:ids});if(s.success&&s.data&&s.data.map)Object.keys(s.data.map).forEach(function(k){rx[k]=s.data.map[k];});}
@@ -405,7 +532,7 @@ h+=g.map(function(c){
 return '<div class="row guest"><div class="av g">'+esc((c.contact_name||'?').charAt(0))+'</div><div class="rb"><div class="rn">'+esc(c.contact_name||c.phone)+'</div><div class="rm">'+esc(c.phone)+'</div></div>'+
 '<button class="btn ht sm" onclick="invite('+SQ+esc(c.phone)+SQ+','+SQ+esc(c.contact_name||'')+SQ+')">🌿</button></div>';
 }).join('');
-if(!m.length&&!g.length)h+='<div class="empty"><span class="i">📱</span><h3>Книга пуста</h3><p>Нажмите «Импорт из телефона» — приложение прочитает контакты напрямую, без браузера.</p></div>';
+if(!m.length&&!g.length)h+='<div class="empty"><span class="i">📱</span><h3>Книга пуста</h3><p>Нажмите «Импорт из телефона».</p></div>';
 pane(h);
 }
 async function importContacts(){
@@ -444,19 +571,18 @@ loadContacts();
 async function loadSpaces(){
 loading('Открываем уроки…');
 var r=await api('messenger_spaces',{});
-if(!r.success){pane('<div class="note"><span>🎓</span><div><b>Раздел уроков</b> требует модуль api-messenger-spaces.php на сайте. Чаты, лента и книга контактов работают полностью.</div></div>');return;}
+if(!r.success){pane('<div class="note"><span>🎓</span><div>Раздел уроков требует модуль api-messenger-spaces.php на сайте. Чаты, лента и книга контактов работают полностью.</div></div>');return;}
 var d=r.data||{};
 spaces=(d.groups||[]).concat(d.retreats||[]).concat(d.academy||[]).concat(d.language||[]);
 pane(spaces.length?spaces.map(function(s){
 return '<div class="row"><div class="av">'+esc(s.icon||'🎓')+'</div><div class="rb"><div class="rn">'+esc(s.title)+'</div><div class="rm">'+esc(cut(s.subtitle||'',50))+'</div></div>'+
 (s.url?'<button class="btn sec sm" onclick="nat().open('+SQ+esc(s.url)+SQ+')">▶️</button>':'')+'</div>';
-}).join(''):'<div class="empty"><span class="i">🎓</span><h3>Пространств пока нет</h3><p>Вступите в группу или курс — карточка появится здесь.</p></div>');
+}).join(''):'<div class="empty"><span class="i">🎓</span><h3>Пространств пока нет</h3><p>Вступите в группу или курс.</p></div>');
 }
 
-/* ---------- ПРОФИЛЬ ---------- */
+/* ---------- ПРОФИЛЬ / ТЕМА / ЭМОДЗИ ---------- */
 function profile(){
-var h='<h2>👤 Профиль</h2><div class="note ok"><span>✅</span><div><b>'+esc((me&&me.name)||'Участник')+'</b> · '+esc((me&&me.phone)||'')+'<br>Приложение 3.0 · автономный режим</div></div>'+
-'<div class="note"><span>🔗</span><div>Имя, фото и город берутся из профиля клуба. Меняйте их на сайте — здесь обновятся сами.</div></div>'+
+var h='<h2>👤 Профиль</h2><div class="note ok"><span>✅</span><div><b>'+esc((me&&me.name)||'Участник')+'</b> · '+esc((me&&me.phone)||'')+'<br>Приложение 3.1 · автономный режим</div></div>'+
 '<label style="font-size:.78rem;color:var(--gold)">О себе</label><textarea class="in" id="pfA" style="min-height:64px">'+esc((me&&me.about)||'')+'</textarea>'+
 '<div class="acts"><button class="btn pri sm" onclick="saveAbout()">💾 Сохранить</button>'+
 '<button class="btn sec sm" onclick="window.ilyTheme()">🌗 Тема</button>'+
@@ -471,15 +597,14 @@ if(r.success)me=r.data;
 }
 function ovOpen(h){$('ovB').innerHTML=h;$('ov').classList.add('on');}
 function ovClose(){$('ov').classList.remove('on');}
-
-/* ---------- ЭМОДЗИ ---------- */
 var emoT='inp';
 function buildEp(){$('epG').innerHTML=EMO.map(function(e){return '<button onclick="insEp('+SQ+e+SQ+')">'+e+'</button>';}).join('');}
 function emojiOpen(t){emoT=t;$('ep').classList.add('on');}
 function insEp(e){
 var el=$(emoT);if(!el)return;
 var s=el.selectionStart==null?el.value.length:el.selectionStart;
-el.value=el.value.slice(0,s)+e+el.value.slice(el.selectionEnd==null?s:el.selectionEnd);
+var en=el.selectionEnd==null?s:el.selectionEnd;
+el.value=el.value.slice(0,s)+e+el.value.slice(en);
 el.focus();grow(el);
 }
 document.addEventListener('click',function(e){
@@ -489,7 +614,7 @@ if(!t.closest('#pal')&&!t.closest('[onclick*="palOpen"]'))$('pal').classList.rem
 if(t.id==='ov')ovClose();
 });
 
-/* ---------- ЗВОНКИ (внутри приложения, без браузера) ---------- */
+/* ---------- ЗВОНКИ ---------- */
 var ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
 var call={room:null,peer:0,name:'',media:'audio',pc:null,st:null,poll:null,last:0,role:'caller',q:[],muted:false};
 async function callStart(media){
